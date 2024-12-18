@@ -23,11 +23,11 @@ jobs:
 
     - name: Validate CloudFormation Template
       run: |
-        aws cloudformation validate-template --template-body file://Web-Container.yml
+        aws cloudformation validate-template --template-body file://Web-Container.yaml
 
-    # - name: Deploy CloudFormation Stack
-    #   run: |
-    #     aws cloudformation deploy \
-    #       --template-file template.yaml \
-    #       --stack-name NodeJSAppStack \
-    #       --capabilities CAPABILITY_NAMED_IAM
+    - name: Deploy CloudFormation Stack
+      run: |
+        aws cloudformation deploy \
+          --template-file Web-Container.yaml \
+          --stack-name NodeJSAppStack \
+          --capabilities CAPABILITY_NAMED_IAM
