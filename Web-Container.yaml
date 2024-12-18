@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation template to deploy a Node.js web application in a shared container using ECS.
+
+Resources:
+  NodeJSAppCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: NodeJSSharedCluster
+
+  NodeJSAppTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: NodeJSAppTask
+      Cpu: "2" # 256 CPU units
+      Memory: "512" # 512 MiB
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: NodeJSContainer
+          Image: node:18 # Node.js version 18
+          Cpu: 1
+          Memory: 256
+          PortMappings:
+            - ContainerPort: 3000
+          Command:
+            - "node"
+            - "server.js"
+          Environment:
+            - Name: NODE_ENV
+              Value: production
+
+  NodeJSAppService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref NodeJSAppCluster
+      TaskDefinition: !Ref NodeJSAppTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - "subnet-84bab3fd"  # Replace with your VPC Subnet ID
+          SecurityGroups:
+            - "Container-SG" # Replace with your Security Group ID
+          AssignPublicIp: ENABLED
+
+  # Define the security group for the EC2 instance to allow incoming HTTP traffic
+  EC2SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: "Container-SG"
+      GroupDescription: "Security group for EC2 instance"
+      VpcId: "vpc-c4cd72bc"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "80"
+          ToPort: "3000"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: "3389"
+          ToPort: "3389"
+          CidrIp: "0.0.0.0/0"   
+
+
+  NodeJSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Node.js web traffic
+      VpcId: "vpc-c4cd72bc" # Replace with your VPC ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  ECSClusterName:
+    Description: Name of the ECS Cluster
+    Value: !Ref NodeJSAppCluster
+
+  NodeJSContainerURL:
+    Description: Public URL of the Node.js application
+    Value: !Sub "http://${AWS::StackName}-ecs-service.${AWS::Region}.amazonaws.com"
